@@ -1,0 +1,68 @@
+library(tidyverse)
+library(caret)
+data <- read.csv("TravelSurveyThess.csv", stringsAsFactors = T, header = TRUE, sep = ";", fileEncoding = "latin1")
+data <- data[, c(2:18, 21:39)]
+
+data = drop_na(data)
+sum(is.na(data))
+pre_proc_mod <- preProcess(data, method = c("medianImpute", "center", "scale"))
+pre_proc_data <- predict(pre_proc_mod, data)
+
+
+sum(is.na(pre_proc_data))
+
+pre_proc_data <- droplevels(pre_proc_data)
+
+#partition data
+partition <- createDataPartition(pre_proc_data$mode, p=0.75, list = FALSE)
+trainSet <- pre_proc_data[partition,]
+testSet <- pre_proc_data[-partition,]
+str(pre_proc_data)
+
+
+#predictor variables
+predictor <- c("Income", "Gender",       
+               "Age","Occupation" ,              
+               "Education"  , "HouseHoldSize" ,           
+               "HouseHold16" ,"driversLicense" ,          
+               "carAvail", "OriginLoc",                
+               "DestLoc" ,"Origin" ,                  
+               "Destination" , "startActiv" ,              
+               "endActiv" ,"tripDuration"  , "TripDay",                  
+               "realTravelTime.Walk","realShortestDistance.Walk",
+               "realTransfer.Walk", "realTravelTime.Car" ,      
+               "realShortestDistance.Car" ,"realTransfer.Car" ,        
+               "realTravelTime.MrC" , "realShortestDistance.MrC", 
+               "realTransfer.MrC" , "realTravelTime.Bus" ,      
+               "realShortestDistance.Bus",  "realTransfer.Bus" ,        
+               "realAccessWalkTime.Bus",    "realAccessWalkDist.Bus",   
+               "realEgressWalkTime.Bus" ,   "realEgressWalkDist.Bus")
+  
+  
+
+#outcome variable
+outcome <- "mode"
+
+#trainSet$my_label <- as.character(trainSet$my_label)
+#testSet$my_label <- as.character(testSet$my_label)
+
+#set training controls parameters
+trControl <- trainControl(method = "cv", number = 5, savePredictions = "final", classProbs = T)
+
+model_rf <-   train(trainSet[,predictor], trainSet[,outcome], method = "rf", trControl = trControl, tuneLength = 3)
+testSet$pred_rf <- predict(object = model_rf, testSet[,predictor])
+confusionMatrix(testSet[,outcome], testSet$pred_rf)
+plot(varImp(model_rf))
+  
+model_nnet <-   train(trainSet[,predictor], trainSet[,outcome], method = "nnet", trControl = trControl, tuneLength = 3)
+testSet$pred_nnet <- predict(object = model_nnet, testSet[,predictor])
+confusionMatrix(testSet[,outcome], testSet$pred_nnet)
+summary(model_nnet)
+
+model_gbm <-   train(trainSet[,predictor], trainSet[,outcome], method = "gbm", trControl = trControl, tuneLength = 3)
+testSet$pred_gbm <- predict(object = model_gbm, testSet[,predictor])
+confusionMatrix(testSet[,outcome], testSet$pred_gbm)
+summary(model_gbm)
+
+result = resamples(list(RF = model_rf, GBM = model_gbm, NN = model_nnet))
+summary(result)
