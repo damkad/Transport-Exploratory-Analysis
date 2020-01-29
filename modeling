@@ -1,16 +1,19 @@
 library(tidyverse)
 library(caret)
+
 data <- read.csv("TravelSurveyThess.csv", stringsAsFactors = T, header = TRUE, sep = ";", fileEncoding = "latin1")
 data <- data[, c(2:18, 21:39)]
-
+data$HouseHoldSize = as.factor(data$HouseHoldSize)
+data$HouseHold16 = as.factor(data$HouseHold16)
+data$driversLicense = as.factor(data$driversLicense)
+data$Income = as.factor(data$Income)
+data$carAvail <- ifelse(data$carAvail==TRUE, 1,0)
+data$carAvail <- as.factor(data$carAvail)
 data = drop_na(data)
 sum(is.na(data))
 pre_proc_mod <- preProcess(data, method = c("medianImpute", "center", "scale"))
 pre_proc_data <- predict(pre_proc_mod, data)
-
-
 sum(is.na(pre_proc_data))
-
 pre_proc_data <- droplevels(pre_proc_data)
 
 #partition data
@@ -18,7 +21,6 @@ partition <- createDataPartition(pre_proc_data$mode, p=0.75, list = FALSE)
 trainSet <- pre_proc_data[partition,]
 testSet <- pre_proc_data[-partition,]
 str(pre_proc_data)
-
 
 #predictor variables
 predictor <- c("Income", "Gender",       
